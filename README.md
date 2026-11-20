@@ -18,7 +18,7 @@
 一束白光穿过棱镜散成光谱，一段文字穿过 8 层散成 31 路概率。
 本发布只包含一个模型：`prism-v3-exp`（129,600 步 / 30 类 / 33.35M 参数的最终权重）
 
-**权重下载**：[HuggingFace](https://huggingface.co/hcy-ai/prism-v3-exp) · [ModelScope](https://www.modelscope.cn/models/hcymcweb/Prism-v3-exp)
+**在线体验**：[model.hcy.ink](https://model.hcy.ink)　**权重下载**：[HuggingFace](https://huggingface.co/hcy-ai/prism-v3-exp) · [ModelScope](https://www.modelscope.cn/models/hcymcweb/Prism-v3-exp)
 
 ---
 
@@ -52,6 +52,8 @@
 模型看到菜市场、奶茶、面馆、烤串就投了餐饮票——它抓到的是词，不是意思。
 
 ## 2. 快速开始
+
+**不想装环境？先看效果：https://model.hcy.ink** —— 贴一段中文直接出分布，手机也能开。
 
 环境：Python 3.9+、`torch>=2.0`、`numpy>=1.24`。
 **只想推理的话不用装 torch**，`onnxruntime + numpy` 就够（约 156 MB）。
@@ -209,6 +211,7 @@ python src/infer.py --checkpoint data/runs/smoke/ckpt_final.pt --text "原告与
 
 | | |
 | --- | --- |
+| 在线体验（推理网页） | https://model.hcy.ink |
 | GitHub（代码 / 训练脚本 / 网页 / 文档） | https://github.com/hcymc/Prism |
 | HuggingFace（权重） | https://huggingface.co/hcy-ai/prism-v3-exp |
 | ModelScope（权重） | https://www.modelscope.cn/models/hcymcweb/Prism-v3-exp |
