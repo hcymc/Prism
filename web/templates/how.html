@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>原理 · PRISM v3</title>
+<link rel="stylesheet" href="static/endfield.css">
+<link rel="stylesheet" href="static/lab.css">
+<link rel="stylesheet" href="static/mobile.css">
+<style>
+  main { max-width: 52rem; margin-inline: auto; padding: clamp(1.25rem, 3vw, 2.25rem) var(--ef-pad) 4rem; }
+  .wide { max-width: 60rem; }
+  .ef-sheet-head { margin-bottom: 1.25rem; }
+  .ef-marker { margin: 0.75rem 0 1.5rem; }
+  .ef-prose h2 { margin-top: 2.6rem; }
+  .ef-prose h3 { margin-top: 1.7rem; font-size: 0.98rem; }
+  .ef-prose > p:first-child { margin-top: 0; }
+  .kv { width: 100%; border-collapse: collapse; margin: 0.7rem 0 0; }
+  .kv th, .kv td { text-align: left; padding: 0.5rem 0.6rem 0.5rem 0; border-bottom: 1px solid var(--ef-rule); vertical-align: top; }
+  .kv th { width: 30%; font-weight: 600; font-size: 0.86rem; color: var(--ef-ink-2); }
+  .kv td { font-size: 0.92rem; }
+  .kv td.num { font-family: var(--ef-font-ui); font-stretch: var(--ef-wide); font-variant-numeric: tabular-nums; }
+
+  figure.arch { margin: 1.5rem 0 0; padding: 1.1rem; border: 1px solid var(--ef-rule); background: var(--ef-panel); }
+  figure.arch figcaption { margin-top: 0.9rem; font-size: 0.8rem; line-height: 1.7; color: var(--ef-ink-2); }
+
+  .arch-open { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; color: inherit; }
+  .arch-open svg { width: 100%; height: auto; display: block; }
+  .arch-open:hover svg { outline: 1px solid var(--ef-trace); outline-offset: 6px; }
+  .arch-open:focus-visible { outline: none; }
+  .arch-open:focus-visible svg { outline: 2px solid var(--ef-trace); outline-offset: 6px; }
+
+  .diagram .bx { fill: none; stroke: var(--ef-ink); stroke-width: 1; }
+  .diagram .bx.soft { fill: color-mix(in srgb, var(--ef-ink) 6%, transparent); }
+  .diagram .bx.dash { stroke-dasharray: 4 4; }
+  .diagram .ln { stroke: var(--ef-ink); stroke-width: 1; fill: none; }
+  .diagram .ln.dash { stroke-dasharray: 4 4; }
+  .diagram .sq { fill: var(--ef-signal); stroke: none; }
+  .diagram .zh { font-family: var(--ef-font-text); font-size: 13px; fill: var(--ef-ink); }
+  .diagram .en { font-family: var(--ef-font-ui); font-size: 9px; letter-spacing: 0.14em; fill: var(--ef-ink-2); }
+  .diagram .num { font-family: var(--ef-font-ui); font-stretch: var(--ef-wide); font-size: 11px; fill: var(--ef-ink-2); }
+
+  @media (min-width: 1200px) {
+    figure.arch { width: calc(100% + 10rem); margin-inline: -5rem; }
+  }
+
+  dialog.arch-modal {
+    width: min(94vw, 1600px); height: 90vh; max-width: none; max-height: none;
+    margin: auto; padding: 0; border: 1px solid var(--ef-rule);
+    background: var(--ef-panel); color: var(--ef-ink); overflow: hidden;
+    display: grid; grid-template-rows: auto 1fr;
+  }
+  dialog.arch-modal:not([open]) { display: none; }
+  dialog.arch-modal:focus { outline: none; }
+  dialog.arch-modal::backdrop { background: color-mix(in srgb, var(--ef-ink) 62%, transparent); }
+  .arch-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--ef-rule); }
+  .arch-tools { display: flex; gap: 0.5rem; }
+  .arch-scroll { overflow: auto; padding: 1rem; background: var(--ef-paper); overscroll-behavior: contain; }
+  .arch-scroll:focus { outline: none; }
+  .arch-scroll:focus-visible { outline: 2px solid var(--ef-trace); outline-offset: -2px; }
+  .arch-scroll svg { display: block; width: min(1500px, 92vw); height: auto; margin: 0 auto; background: var(--ef-panel); }
+  .arch-scroll.is-fit svg { width: auto; height: 100%; max-width: 100%; margin: 0 auto; }
+
+  .flow { margin: 1.1rem 0 0; padding: 0.95rem 1rem; border: 1px solid var(--ef-rule); background: var(--ef-panel); overflow-x: auto; }
+  .flow pre { margin: 0; font-family: var(--ef-font-mono); font-size: 0.82rem; line-height: 1.75; color: var(--ef-ink); }
+  .note { border-left: 2px solid var(--ef-signal); padding: 0.15rem 0 0.15rem 0.9rem; margin: 1.15rem 0; color: var(--ef-ink-2); font-size: 0.9rem; }
+  .mono { font-family: var(--ef-font-mono); font-size: 0.86rem; }
+</style>
+</head>
+<body class="ef ef-contours">
+<div class="ef-tri ef-in-sweep" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<header class="ef-cmdbar">
+  <a class="brand" href="./"><span class="seal">P</span>PRISM</a>
+  <nav aria-label="分区">
+    <a href="./">推理<small>Inference</small></a>
+    <a href="card">模型卡<small>Model card</small></a>
+    <a href="how" aria-current="page">原理<small>How it works</small></a>
+  </nav>
+  <div class="util"><button class="ef-btn small" type="button" id="theme">深浅</button></div>
+</header>
+
+<main>
+  <header class="ef-sheet-head">
+    <h1 class="ef-read">PRISM <span class="muted">v3 · 原理</span></h1>
+    <ul class="ef-facts ef-field">
+      <li>结构</li>
+      <li>训练机制</li>
+      <li>实测权重</li>
+      <li>边界</li>
+    </ul>
+  </header>
+
+  <p class="ef-marker">它由什么组成、训练时到底在学什么、为什么有些错是注定会犯的。</p>
+
+  <div class="ef-prose">
+    <p>这份文档讲三件事：模型由什么组成、训练时到底在学什么、为什么有些错是注定会犯的。想知道它有多准、能拿来干什么，看<a href="card">模型卡</a>。</p>
+
+    <p>一个 <strong>33,353,760 参数</strong>（3,335 万）的 decoder-only 语言模型，从随机初始化开始，在 3.56 亿字中文行业语料上训练。它和普通语言模型的区别只有一个：读完最后一个字时，从同一份隐状态里再吐出一个 31 维的领域分布。</p>
+
+    <p><strong>它只会两件事——猜下一个字，和给整段文字判行业。第二件是第一件的副产品。</strong></p>
+
+    <h2>结构</h2>
+
+    <figure class="arch">
+      <button class="arch-open" type="button" aria-haspopup="dialog" aria-label="放大查看模型架构图">
+      <svg class="diagram" viewBox="0 0 760 772" role="img" aria-label="模型架构：字表嵌入加 RoPE 位置编码，8 层自注意力块，取最后一个字的隐状态后分成语言模型头与领域头两个出口">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ef-ink)"></path>
+          </marker>
+        </defs>
+
+        <rect class="bx" x="200" y="14" width="360" height="48"></rect>
+        <text class="zh" x="380" y="36" text-anchor="middle">输入文本</text>
+        <text class="num" x="380" y="52" text-anchor="middle">≤ 512 字 · 字符级</text>
+        <line class="ln" x1="380" y1="62" x2="380" y2="88" marker-end="url(#ah)"></line>
+
+        <rect class="bx" x="200" y="88" width="360" height="48"></rect>
+        <text class="zh" x="380" y="110" text-anchor="middle">字表嵌入</text>
+        <text class="num" x="380" y="126" text-anchor="middle">15,341 → 512 维</text>
+
+        <rect class="bx soft" x="200" y="142" width="360" height="24"></rect>
+        <text class="num" x="380" y="158" text-anchor="middle">＋ RoPE 旋转位置编码</text>
+        <line class="ln" x1="380" y1="166" x2="380" y2="184" marker-end="url(#ah)"></line>
+
+        <rect class="bx" x="150" y="184" width="460" height="246"></rect>
+        <text class="num" x="596" y="202" text-anchor="end">× 8 层</text>
+
+        <rect class="bx soft" x="180" y="210" width="400" height="44"></rect>
+        <text class="zh" x="380" y="229" text-anchor="middle">多头自注意力</text>
+        <text class="num" x="380" y="245" text-anchor="middle">8 头 · 因果掩码，每个字只看自己和左边</text>
+
+        <rect class="bx dash" x="180" y="262" width="400" height="22"></rect>
+        <text class="num" x="380" y="277" text-anchor="middle">残差 + LayerNorm</text>
+
+        <rect class="bx soft" x="180" y="292" width="400" height="44"></rect>
+        <text class="zh" x="380" y="311" text-anchor="middle">前馈网络</text>
+        <text class="num" x="380" y="327" text-anchor="middle">2048 · GELU</text>
+
+        <rect class="bx dash" x="180" y="344" width="400" height="22"></rect>
+        <text class="num" x="380" y="359" text-anchor="middle">残差 + LayerNorm</text>
+
+        <text class="num" x="380" y="396" text-anchor="middle">输出每个位置的隐状态，维度 512</text>
+        <line class="ln" x1="380" y1="430" x2="380" y2="460" marker-end="url(#ah)"></line>
+
+        <rect class="bx soft" x="200" y="460" width="360" height="44"></rect>
+        <text class="zh" x="380" y="479" text-anchor="middle">取最后一个字的隐状态</text>
+        <text class="num" x="380" y="495" text-anchor="middle">这一个向量同时喂给两个出口</text>
+
+        <line class="ln" x1="380" y1="504" x2="380" y2="524"></line>
+        <line class="ln" x1="215" y1="524" x2="545" y2="524"></line>
+        <line class="ln" x1="215" y1="524" x2="215" y2="548" marker-end="url(#ah)"></line>
+        <line class="ln" x1="545" y1="524" x2="545" y2="548" marker-end="url(#ah)"></line>
+
+        <rect class="bx dash" x="80" y="548" width="270" height="76"></rect>
+        <text class="en" x="215" y="570" text-anchor="middle">LANGUAGE HEAD</text>
+        <text class="zh" x="215" y="590" text-anchor="middle">语言模型头</text>
+        <text class="num" x="215" y="608" text-anchor="middle">15,341 维 · 猜下一个字</text>
+        <line class="ln dash" x1="215" y1="624" x2="215" y2="648" marker-end="url(#ah)"></line>
+        <rect class="bx dash" x="80" y="648" width="270" height="44"></rect>
+        <text class="num" x="215" y="667" text-anchor="middle">训练时才算这一路</text>
+        <text class="num" x="215" y="683" text-anchor="middle">推理关闭</text>
+
+        <rect class="bx" x="410" y="548" width="270" height="76"></rect>
+        <rect class="sq" x="424" y="562" width="7" height="7"></rect>
+        <text class="en" x="545" y="570" text-anchor="middle">DOMAIN HEAD</text>
+        <text class="zh" x="545" y="590" text-anchor="middle">领域头</text>
+        <text class="num" x="545" y="608" text-anchor="middle">线性映射 512 → 31</text>
+        <line class="ln" x1="545" y1="624" x2="545" y2="648" marker-end="url(#ah)"></line>
+
+        <rect class="bx" x="410" y="648" width="270" height="96"></rect>
+        <text class="zh" x="545" y="672" text-anchor="middle">31 维 softmax</text>
+        <text class="num" x="545" y="690" text-anchor="middle">各格概率，合计 1.000</text>
+        <text class="num" x="545" y="714" text-anchor="middle">30 类有样本 · 第 31 格空置</text>
+        <text class="num" x="545" y="732" text-anchor="middle">取最大值 → 领域判定</text>
+      </svg>
+      </button>
+      <figcaption>实线框是推理时真正跑的部分；虚线框是训练时才用到的那一路。两个出口共用同一个 512 维隐状态，没有各训各的。点图可以放大。</figcaption>
+    </figure>
+
+    <dialog class="arch-modal" id="archDialog" aria-label="模型架构图" tabindex="-1">
+      <div class="arch-bar">
+        <span class="ef-field">模型架构 · 8 层 · d=512 · 两个出口</span>
+        <span class="arch-tools">
+          <button class="ef-btn small" type="button" id="archFit">适应窗口</button>
+          <button class="ef-btn small" type="button" id="archClose">关闭</button>
+        </span>
+      </div>
+      <div class="arch-scroll" id="archScroll" tabindex="0" aria-label="放大的架构图，可滚动"></div>
+    </dialog>
+
+    <table class="kv">
+      <tr><th>形态</th><td>decoder-only Transformer，手写 PyTorch，不依赖 transformers</td></tr>
+      <tr><th>层数 / 宽度</th><td class="num">8 层 · d=512 · 8 头 · head_dim 64 · FFN 2048</td></tr>
+      <tr><th>位置编码</th><td>RoPE，不加参数</td></tr>
+      <tr><th>归一化</th><td>Pre-LN，每个子层前做 LayerNorm，输出前再过一次 ln_f</td></tr>
+      <tr><th>上下文</th><td class="num">512 字，字符级</td></tr>
+      <tr><th>词表</th><td class="num">15,341</td></tr>
+      <tr><th>Dropout</th><td class="num">0.1</td></tr>
+      <tr><th>两个出口</th><td>语言模型头（15,341 维）+ 领域头（31 维）</td></tr>
+    </table>
+
+    <h3>参数都花在哪</h3>
+
+    <table class="kv">
+      <tr><th>字表嵌入 15341×512</th><td class="num">7,854,592 · 23.5%</td></tr>
+      <tr><th>8 个 Transformer 块</th><td class="num">25,219,072 · 75.6%</td></tr>
+      <tr><th>输出层归一化</th><td class="num">1,024</td></tr>
+      <tr><th>领域头 512→512→31</th><td class="num">278,559 · <strong>0.83%</strong></td></tr>
+      <tr><th>池化打分（仅 attn 池化用）</th><td class="num">513</td></tr>
+      <tr><th>语言模型头</th><td class="num">0 · 与字表嵌入共享权重</td></tr>
+      <tr><th>合计</th><td class="num"><strong>33,353,760</strong></td></tr>
+    </table>
+
+    <p>单个块拆开：多头自注意力 787,968（qkv）+ 262,656（proj）+ 2×1,024（LN），前馈 1,050,624 + 1,049,088。
+      存档 <span class="mono">best.pt</span> 是 382 MB，因为带 AdamW 的一阶、二阶矩；纯权重 fp32 约 127 MB。</p>
+
+    <div class="note">
+      这张表最重要的信息是最后两行：语言模型头一个参数都不占，领域头只占 0.83%。
+      整个模型的容量几乎全在「怎么读文本」上，而不是「怎么分类」。
+    </div>
+
+    <h2>词表与输入</h2>
+
+    <p>15,341 个词条：10,305 个汉字单字、5,031 个字母数字与符号、5 个控制符。
+       <strong>整个词表里只有一个中文标点：<span class="mono">·</span>，没有 <span class="mono">，</span> <span class="mono">。</span> <span class="mono">、</span>。</strong>
+       这不是设计选择，是语料决定的——IndustryCorpus2 的正文里逗号句号一律是半角。</p>
+
+    <p>后果：直接把真实文本喂进去，每个「，」都会查不到、变成 <span class="mono">&lt;unk&gt;</span>。
+       而它在训练数据里出现 0 次，向量是随机初始化的。等于每十个字插一个随机噪声，句子边界也全断了。
+       所以推理前必须归一化（<span class="mono">src/textproc.py</span>）：全角转半角，字表外的字直接丢弃。</p>
+
+    <p>还有一条：<strong>短于 512 字要重复补齐</strong>。训练时模型永远见 512 字，短输入属于没见过的形态。
+       实测同一批文档，直接判前 30 字命中 29.2%，重复补齐到 512 后 62.5%——信息一个字没多，只是长度对了。</p>
+
+    <h2>训练数据</h2>
+
+    <p>语料来自智源 <strong>IndustryCorpus2</strong>（Apache-2.0），按行业分了子集，<strong>文件夹名本身就是标签</strong>，一条标注都不用写。</p>
+
+    <table class="kv">
+      <tr><th>规模</th><td class="num">316,712 篇 · 356,481,811 字</td></tr>
+      <tr><th>切分</th><td class="num">训练 285,056 篇 / 验证 31,656 篇（按文档切）</td></tr>
+      <tr><th>类别</th><td>30 类有样本；第 31 个「其他」槽永远没有正样本</td></tr>
+    </table>
+
+    <h2>训练配置</h2>
+
+    <table class="kv">
+      <tr><th>损失</th><td>猜字交叉熵 + 2.0 × 领域交叉熵（平滑 0.95）+ 0.5 × 两块一致性 + 0.1 × 对比</td></tr>
+      <tr><th>优化器</th><td>AdamW，β=(0.9, 0.95)，weight decay 0.1，梯度裁剪 1.0</td></tr>
+      <tr><th>学习率</th><td class="num">3e-4，余弦衰减，warmup 800 步</td></tr>
+      <tr><th>批与长度</th><td class="num">batch 8 · 块长 512，训练中在 256~512 随机切换</td></tr>
+      <tr><th>训练量</th><td class="num">129,600 步（最佳快照 129,000 步）</td></tr>
+      <tr><th>硬件</th><td>单卡 RTX 2080 SUPER 8G，fp16，显存 2.99 GB，约 6 小时</td></tr>
+    </table>
+
+    <p class="ef-notice" data-flag="未跑完">计划 15 万步，在 12.96 万步手动停止。学习率已降到 1.4e-5，接近收尾，但不是严格跑满的退火。</p>
+
+    <h2>两个出口为什么是这么接的</h2>
+
+    <p><strong>池化取最后一个位置</strong>，这是 decoder-only 的必然结果：第 100 个字只能看见第 1 到 100 个字，
+       看不见后面。前面所有位置都是「半瞎」的，只有最后那个看完全文。取平均会把一堆只看过半句的状态混进来。</p>
+
+    <p>代价是整篇文档必须挤进一个 512 维向量——<strong>信息瓶颈在这儿，不在分类头</strong>。</p>
+
+    <h2>训练其实是四项损失</h2>
+
+    <p><span class="mono">src/model.py</span> 里只有两项（语言 + 领域），另外两项在 <span class="mono">src/train.py</span> 里算：</p>
+
+    <div class="flow"><pre>总损失 = 语言损失 + 2.0 × 领域损失 + 0.5 × 一致性损失 + 0.1 × 对比损失</pre></div>
+
+    <table class="kv">
+      <tr><th>语言损失</th><td>看到前 500 字，第 501 个字该是什么 · 不需要标签，下一个字就是答案</td></tr>
+      <tr><th>领域损失</th><td>给真类分了多少概率 · 需要标签</td></tr>
+      <tr><th>一致性损失</th><td>同一篇文档的两个片段，输出分布互相靠拢（对称 KL）· <strong>不需要标签</strong></td></tr>
+      <tr><th>对比损失</th><td>同篇两段在向量空间靠近、batch 内其他文档推开（InfoNCE，温度 0.07）· <strong>不需要标签</strong></td></tr>
+    </table>
+
+    <p>后两项连标签都不需要，只要求「同一篇文档的不同位置应该给出同一个答案」。这是自监督——模型自己跟自己较劲。
+       因为一篇文档要取两个片段各跑一次前向，每步实际是 2 次前向、1 次反向。</p>
+
+    <h2>损失衡量的是概率，不是对错</h2>
+
+    <p>标签不是 one-hot，是平滑过的（<span class="mono">smooth=0.05</span>）：真类 0.95，其余 30 类各 0.00167。于是：</p>
+
+    <p>判<strong>对</strong>了但只有 51% 把握 → 还是被扣分，离 0.95 差得远；判<strong>错</strong>了但真类还留着 40% → 扣得不多。
+       <strong>它惩罚的是「你有多确信地错」，不是「你错没错」。</strong></p>
+
+    <p>为什么不直接用对错？「对错」是阶跃函数，导数处处为 0（跳变点还不可导），梯度传不回去，反向传播整个断掉。
+       交叉熵是可导的替身：把「对错」换成「概率离目标差多远」。代价是它只管离目标多远，不管类别对不对。</p>
+
+    <div class="note">
+      因为标签是软的，领域损失永远降不到 0。理论下限是
+      0.95×ln(1/0.95) + 30×0.00167×ln(1/0.00167) ≈ <strong>0.37</strong>。
+      训练日志里它停在 0.3 左右——已经贴着下限。剩下 15% 的错不是「没练够」，是目标函数测不出更多区别。
+    </div>
+
+    <h2>没人对它说「你错了」，它怎么学会分类</h2>
+
+    <p>说了，只是不用语言说。<strong>文件夹名就是答案。</strong>石油化工目录里的文档，训练时被塞进「第 17 格 0.95 分」这个目标。
+       区别只在于，「对不对」不是一句话，而是一列数。把 31 类压成 3 类看：</p>
+
+    <table class="kv">
+      <tr><th>石油化工</th><td>模型给 0.337 · 目标 0.95 · 差 <strong>−0.613</strong> · 给低了，往上抬</td></tr>
+      <tr><th>电力能源</th><td>模型给 0.413 · 目标 0.025 · 差 <strong>+0.388</strong> · 给高了，往下压</td></tr>
+      <tr><th>计算机编程</th><td>模型给 0.250 · 目标 0.025 · 差 <strong>+0.225</strong> · 给高了，往下压</td></tr>
+    </table>
+
+    <p>最右两列就是「你猜得对不对」的连续版本。数学上关系非常干净：
+       <strong>softmax + 交叉熵的梯度，恰好等于「预测概率 − 目标概率」。</strong>
+       反向传播不需要知道「对错」这个词，它拿到的是一个 31 维向量，里面写着哪格该抬、抬多少。</p>
+
+    <p>这个向量乘上 512 维的输入，得到一个 31×512 的修正矩阵，加上去；然后往回流，过 GELU、第一层、8 层，每层改一点点。</p>
+
+    <h3>为什么学出来的是分类，不是背题</h3>
+
+    <p>两件事挡着：<strong>每 batch 8 篇</strong>，梯度取平均，模型不能只为这一篇改，必须找一个对 8 篇都成立的方向；
+       <strong>每次只走一小步</strong>，学习率限制改动幅度。十二万九千步，每步一点点。</p>
+
+    <p>收敛路径因此是「慢慢逼近一个对所有样本都还行的位置」，不是「记住每一篇」。</p>
+
+    <h2>31 个格子怎么对上号</h2>
+
+    <p>领域头是两层，不是一层：<span class="mono">512 → 512 → GELU → 31 → softmax</span>。
+       最后那层是 31 条点积向量，<strong>一个类别一条</strong>。打分就是量「这份文档跟这条向量有多像」。</p>
+
+    <p>压成 3 维举例，文档向量 <span class="mono">[0.8, −0.3, 0.5]</span>：石油化工的权重
+       <span class="mono">[2.0, −0.5, 1.5]</span> 点积得 <strong>2.5</strong>；
+       体育的权重 <span class="mono">[−1.0, 0.2, −0.8]</span> 点积得 <strong>−1.26</strong>。方向对上的得分高，反着的减分。</p>
+
+    <p>第一层的作用是「重新组合」：原本散在几十个维度里的证据收敛成几个更明确的中间特征；GELU 把负数压成 0，
+       等于只让有证据的信号往下走。</p>
+
+    <p><strong>训练在干的事</strong>：31 条向量初始化时是空间里随机指的 31 个方向，谁也不认识谁。每来一篇文档，
+       就把对应那条转向这个向量，把其他条转开。一万篇之后，每条都转到「自己那类样本扎堆的方向」上。</p>
+
+    <div class="note">
+      它没有学「石油化工是什么」，它学的是<strong>「被标成第 17 格的那堆样本，向量有什么共同点」</strong>。
+    </div>
+
+    <h2>这个分类头实测学成了什么样</h2>
+
+    <p>翻 <span class="mono">best.pt</span> 里的实际权重：</p>
+
+    <table class="kv">
+      <tr><th>第一层 512→512</th><td class="num">26.3 万参数 · std 0.020 → 0.029 · 几乎没动</td></tr>
+      <tr><th>第二层 512→31</th><td class="num">1.6 万参数 · std 0.020 → 0.303 · 涨了 15 倍</td></tr>
+      <tr><th>第二层 bias</th><td class="num">31 个 · 均值 −0.225 · 整体往负的挪</td></tr>
+      <tr><th>合计</th><td class="num">278,559 参数 · 占全模型 0.83%</td></tr>
+    </table>
+
+    <p><strong>第一层基本没学到结构，12.9 万步下来还接近初始随机值。活全在第二层那 31 条点积上。</strong>
+       bias 往负的挪，是因为标签是软标签，模型学会了「别把话说满」。</p>
+
+    <p>这意味着这个头的表达能力有一大半是浪费的。可以试三种改法，每个几行代码：删掉第一层（512→31 直达）、
+       给它加个 LayerNorm、或者换成中间更窄的 512→128→31。<strong>这三个消融还没做。</strong></p>
+
+    <p>认领域这件事，99% 的功劳在前面 8 层。头只是把 512 维里<strong>已经存在</strong>的区分读出来——
+       如果那 512 维里压根分不开两类，这 28 万参数怎么调都没用。</p>
+
+    <h2>推理时逐层发生了什么</h2>
+
+    <p>拿「催化裂化装置开工前需要检查」走一遍：</p>
+
+    <table class="kv">
+      <tr><th>第 0 层</th><td>字变向量。「催」和「化」的向量毫无关系，纯随机初始化</td></tr>
+      <tr><th>第 1–2 层</th><td>学局部搭配。「催化」后面跟「裂化」概率高，注意力把这两个字连起来</td></tr>
+      <tr><th>第 3–5 层</th><td>学短语级概念，信息混进同一个方向</td></tr>
+      <tr><th>第 6–8 层</th><td>把整段语境压进最后一个位置的 512 维向量</td></tr>
+      <tr><th>领域头</th><td>读这个向量，石油化工那格得分最高</td></tr>
+    </table>
+
+    <p>注意力里 QK 决定「看谁」，V 决定「搬什么」，两者都是学出来的，不是人定的。
+       <strong>全程没有任何「关键词 → 行业」的对照表，全是矩阵乘法。</strong></p>
+
+    <h2>它大概率就是在抓关键词（未验证）</h2>
+
+    <p>一篇写城市一天的散文里出现了菜市场、粮油店、超市货架、奶茶、面馆、烤串、薯片，它判餐饮 <strong>93%</strong>。
+       如果真懂了语义，应该知道这是在写城市生活，餐饮只是素材。但它看到足够多的餐饮词就投票了。</p>
+
+    <p>同理，测到的「新闻传媒 → 消防安全」大概是抓到了「通报」「检查」「整改」；
+       「数学 → 住宿餐饮」可能是因为「样本」「抽样」在餐饮食材语料里也高频。</p>
+
+    <p>如果假说成立，85% 的准确率其实来自「行业语料的用词太集中」——判石油化工根本不需要理解催化裂化。
+       剩下的错，全出现在「没有强关键词」或「关键词跨类」的文档上。</p>
+
+    <div class="note">
+      验证方法：取判餐饮的那篇散文，看 8 层注意力的权重落在哪几个字上。落在「面馆」「奶茶」上，假说成立；
+      散在全篇，说明它在做更全局的事。<strong>这个实验还没做。</strong>
+    </div>
+
+    <h2>三处实测出来的边界</h2>
+
+    <h3>长度</h3>
+
+    <p>同一批验证文档，只截前 N 字（每类 3 篇共 90 篇）：</p>
+
+    <table class="kv">
+      <tr><th>30 / 80 / 150 / 300 / 512 字</th><td class="num">44.4% · 51.1% · 56.7% · 72.2% · 82.2%</td></tr>
+      <tr><th>600 篇类均衡</th><td class="num">85.2%</td></tr>
+      <tr><th>2000 篇自然分布</th><td class="num">88.45%（大类更多，而大类恰好更好分）</td></tr>
+    </table>
+
+    <p>重复补齐的效果：前 30 字直接判 29.2% / 置信 0.309，补齐到 512 后 62.5% / 0.735；
+       前 80 字 46.7% / 0.391，补齐后 75.8% / 0.792。
+       30 字基本是瞎猜；补齐后大幅提升，但置信度也被一起抬高了——它并没有更懂。</p>
+
+    <h3>全角标点</h3>
+
+    <table class="kv">
+      <tr><th>512 字 · 240 篇</th><td class="num">85.0% / 置信 0.776 → 86.7% / 0.820</td></tr>
+      <tr><th>40 字 · 240 篇</th><td class="num">63.3% / 0.721 → 67.5% / 0.755</td></tr>
+      <tr><th>DeepSeek 报道 · 150 篇</th><td class="num">64.0% / 0.626 → 62.0% / 0.685（噪声）</td></tr>
+    </table>
+
+    <p>准确率变化在噪声边缘，<strong>置信度三组全升 0.03~0.06</strong>。标点被吃掉的代价是「模型变得没底」，
+       不是「判错」。它还能从上下文猜对，但概率被噪声摊平了——这对「把概率当权重用」影响很大，对「取最大值」影响很小。</p>
+
+    <p>一个还没解释的副作用：手写 30 字短句改标点后从 30% 跳到 76%，远大于 40 字切片的 +4.2pt。
+       怀疑是重复补齐把 <span class="mono">&lt;unk&gt;</span> 变成了周期性信号，未验证。</p>
+
+    <h3>类目</h3>
+
+    <p>600 篇均衡评测：航空航天、计算机编程_代码 100%；数学、消防安全、新闻传媒、信息安全 95%。
+       最差的是计算机_通信 <strong>50%</strong>、其他制造 60%、科技_科学研究 60%、石油化工 60%、电力能源 65%。</p>
+
+    <p>这几个的边界本身就重叠。<strong>不是分类头不会分，是那几堆向量本来就没分开。</strong></p>
+
+    <h2>标签是天花板，还有一格是空的</h2>
+
+    <p>类目表有 31 格，但<strong>第 31 格「其他」一个训练样本都没有</strong>。数据全是按行业分好的文件夹，
+       没有「什么都沾一点」的文档喂给它。所以它学不会输出这一格，只能从 30 个真类里硬选一个，选了还很自信。</p>
+
+    <p>那篇城市散文本该落在这里——它同时沾金融、餐饮、文学，正确做法是「不确定」。但模型只能给出 93% 的餐饮。
+       <strong>要修的不是模型，是数据。</strong>补 300–500 篇散文、随笔、城市观察、混合话题的帖子，
+       这一格才会激活——槽位一直存在，只是从没被填过。</p>
+
+    <p>顺带一个观察：有些错误不是模型判错，是<strong>标签本身在打架</strong>。
+       「计算机_通信 / 计算机编程 / 科技_科学研究」这三类，人自己也分不清边界在哪。</p>
+
+    <div class="note">
+      一句话总结：模型不是「理解」了行业，它复现的是人类的分类习惯。人分得清的它学得会；
+      人自己都含糊的它学成一团；人没给过例子的它永远不会输出。
+    </div>
+
+    <h2>还没搞清的三件事</h2>
+
+    <table class="kv">
+      <tr><th>短句补齐</th><td>是否放大了标点噪声——手写 30 字短句改标点后 30% → 76%，远大于 40 字切片的 +4.2pt</td></tr>
+      <tr><th>分布外掉点</th><td>是「文风不对」还是「题目本身模糊」——同类语料 85%，DeepSeek 写的 150 篇只有 64%</td></tr>
+      <tr><th>天花板</th><td>是容量不够还是标签重叠——分类头几乎没在动这件事倾向后者，但没做消融</td></tr>
+    </table>
+
+    <h2>复现</h2>
+
+    <div class="flow"><pre># 单段文字的完整分布（含原样 / 归一化对比）
+python eval/one_text.py --file samples/user_sample.txt --top 8
+
+# 全角/半角控制变量
+python eval/eval_punct.py --source valid --docs 240
+python eval/eval_punct.py --source valid --docs 240 --trunc 40
+python eval/eval_punct.py --source llm --file samples/llm_news_150.jsonl
+
+# 每类命中率
+python eval/eval_per_class.py</pre></div>
+  </div>
+</main>
+
+<script>
+function setTheme(mode) {
+  document.documentElement.dataset.theme = mode;
+  localStorage.setItem('dl-theme', mode);
+}
+document.getElementById('theme').onclick = () => {
+  setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+};
+const saved = localStorage.getItem('dl-theme');
+if (saved) setTheme(saved);
+const themeParam = new URLSearchParams(location.search).get('theme');
+if (themeParam) setTheme(themeParam);
+
+const archDlg = document.getElementById('archDialog');
+const archScroll = document.getElementById('archScroll');
+const archOpen = document.querySelector('.arch-open');
+let archBuilt = false;
+
+function buildArch() {
+  if (archBuilt) return;
+  const svg = archOpen.querySelector('svg').cloneNode(true);
+  svg.querySelectorAll('[id]').forEach(el => { el.id = el.id + '-big'; });
+  svg.querySelectorAll('*').forEach(el => {
+    [...el.attributes].forEach(a => {
+      if (a.value.indexOf('url(#ah)') === 0) el.setAttribute(a.name, 'url(#ah-big)');
+    });
+  });
+  archScroll.appendChild(svg);
+  archBuilt = true;
+}
+
+archOpen.addEventListener('click', () => {
+  buildArch();
+  archScroll.classList.remove('is-fit');
+  document.getElementById('archFit').textContent = '适应窗口';
+  archDlg.showModal();
+  archDlg.focus();
+  archScroll.scrollTop = 0;
+});
+
+document.getElementById('archClose').onclick = () => archDlg.close();
+document.getElementById('archFit').onclick = (e) => {
+  archScroll.classList.toggle('is-fit');
+  e.currentTarget.textContent = archScroll.classList.contains('is-fit') ? '放大' : '适应窗口';
+};
+archDlg.addEventListener('click', (e) => {
+  if (e.target === archDlg) archDlg.close();
+});
+
+if (new URLSearchParams(location.search).get('arch')) {
+  archOpen.click();
+}
+</script>
+</body>
+</html>

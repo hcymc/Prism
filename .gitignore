@@ -1,0 +1,30 @@
+# 生成物，不入库
+data/
+runs/
+onnx/
+*.pt
+*.onnx
+!models/*.onnx
+*.bin
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# 编辑器与系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志与临时文件
+*.log
+logs/
+server.out.log
+server.err.log
+heartbeat.json

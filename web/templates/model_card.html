@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>模型卡 · PRISM v3</title>
+<link rel="stylesheet" href="static/endfield.css">
+<link rel="stylesheet" href="static/lab.css">
+<link rel="stylesheet" href="static/mobile.css">
+<style>
+  main { max-width: 52rem; margin-inline: auto; padding: clamp(1.25rem, 3vw, 2.25rem) var(--ef-pad) 4rem; }
+  .wide { max-width: 60rem; }
+  .ef-sheet-head { margin-bottom: 1.25rem; }
+  .ef-marker { margin: 0.75rem 0 1.5rem; }
+  .ef-prose h2 { margin-top: 2.4rem; }
+  .ef-prose h3 { margin-top: 1.6rem; }
+  .ef-prose > p:first-child { margin-top: 0; }
+  .kv { width: 100%; border-collapse: collapse; margin: 0.6rem 0 0; }
+  .kv th, .kv td { text-align: left; padding: 0.5rem 0.6rem 0.5rem 0; border-bottom: 1px solid var(--ef-rule); vertical-align: top; }
+  .kv th { width: 32%; font-weight: 600; font-size: 0.88rem; color: var(--ef-ink-2); }
+  .kv td { font-size: 0.92rem; }
+  .kv td.num { font-family: var(--ef-font-ui); font-stretch: var(--ef-wide); font-variant-numeric: tabular-nums; }
+
+  /* 架构图：直角、细线，只有「实际取用的出口」用一小块强调色标出来 */
+  figure.arch { margin: 1.5rem 0 0; padding: 1.1rem; border: 1px solid var(--ef-rule); background: var(--ef-panel); }
+  figure.arch figcaption { margin-top: 0.9rem; font-size: 0.8rem; line-height: 1.7; color: var(--ef-ink-2); }
+
+  .arch-open { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; color: inherit; }
+  .arch-open svg { width: 100%; height: auto; display: block; }
+  .arch-open:hover svg { outline: 1px solid var(--ef-trace); outline-offset: 6px; }
+  .arch-open:focus-visible { outline: none; }
+  .arch-open:focus-visible svg { outline: 2px solid var(--ef-trace); outline-offset: 6px; }
+
+  .diagram .bx { fill: none; stroke: var(--ef-ink); stroke-width: 1; }
+  .diagram .bx.soft { fill: color-mix(in srgb, var(--ef-ink) 6%, transparent); }
+  .diagram .bx.dash { stroke-dasharray: 4 4; }
+  .diagram .ln { stroke: var(--ef-ink); stroke-width: 1; fill: none; }
+  .diagram .ln.dash { stroke-dasharray: 4 4; }
+  .diagram .sq { fill: var(--ef-signal); stroke: none; }
+  .diagram .zh { font-family: var(--ef-font-text); font-size: 13px; fill: var(--ef-ink); }
+  .diagram .en { font-family: var(--ef-font-ui); font-size: 9px; letter-spacing: 0.14em; fill: var(--ef-ink-2); }
+  .diagram .num { font-family: var(--ef-font-ui); font-stretch: var(--ef-wide); font-size: 11px; fill: var(--ef-ink-2); }
+
+  /* 大屏让图比正文栏宽一点，图里的字才不至于缩成小字 */
+  @media (min-width: 1200px) {
+    figure.arch { width: calc(100% + 10rem); margin-inline: -5rem; }
+  }
+
+  /* 放大查看 */
+  dialog.arch-modal {
+    width: min(94vw, 1600px); height: 90vh; max-width: none; max-height: none;
+    margin: auto; padding: 0; border: 1px solid var(--ef-rule);
+    background: var(--ef-panel); color: var(--ef-ink); overflow: hidden;
+    display: grid; grid-template-rows: auto 1fr;
+  }
+  dialog.arch-modal:not([open]) { display: none; }
+  dialog.arch-modal:focus { outline: none; }
+  dialog.arch-modal::backdrop { background: color-mix(in srgb, var(--ef-ink) 62%, transparent); }
+  .arch-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--ef-rule); }
+  .arch-tools { display: flex; gap: 0.5rem; }
+  .arch-scroll { overflow: auto; padding: 1rem; background: var(--ef-paper); overscroll-behavior: contain; }
+  .arch-scroll:focus { outline: none; }
+  .arch-scroll:focus-visible { outline: 2px solid var(--ef-trace); outline-offset: -2px; }
+  .arch-scroll svg { display: block; width: min(1500px, 92vw); height: auto; margin: 0 auto; background: var(--ef-panel); }
+  .arch-scroll.is-fit svg { width: auto; height: 100%; max-width: 100%; margin: 0 auto; }
+</style>
+</head>
+<body class="ef ef-contours">
+<div class="ef-tri ef-in-sweep" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<header class="ef-cmdbar">
+  <a class="brand" href="./"><span class="seal">P</span>PRISM</a>
+  <nav aria-label="分区">
+    <a href="./">推理<small>Inference</small></a>
+    <a href="card" aria-current="page">模型卡<small>Model card</small></a>
+    <a href="how">原理<small>How it works</small></a>
+  </nav>
+  <div class="util"><button class="ef-btn small" type="button" id="theme">深浅</button></div>
+</header>
+
+<main>
+  <header class="ef-sheet-head">
+    <h1 class="ef-read">PRISM <span class="muted">v3</span></h1>
+    <ul class="ef-facts ef-field">
+      <li><time datetime="2026-11-07">2026.11.07</time></li>
+      <li>3,335 万参数</li>
+      <li>30 类</li>
+      <li>129,600 步</li>
+    </ul>
+  </header>
+
+  <p class="ef-marker">棱镜：一束白光穿过棱镜散成光谱，一段文字穿过 8 层散成 31 路概率。它不给你一个标签，给你一整条光谱——最亮的那格是判定，剩下的格子是「还有多像别的行业」。</p>
+
+  <div class="ef-prose">
+    <p>这是一个 3,335 万参数的 decoder-only 语言模型，从随机初始化开始，在 3.56 亿字中文行业语料上训练。它和普通语言模型只差一个出口：读完最后一个字时，从同一份隐状态里再吐出一个 31 维的领域分布。</p>
+
+    <p>两个出口一起训练，用的时候只取领域那路。它没有做任何指令微调，也不是聊天模型——你给它一段文字，它只回答「这段字像哪个行业」，以及「其他行业的可能性各有多大」。</p>
+
+    <h2>能做什么，不能做什么</h2>
+
+    <p><strong>可以</strong>：给几百字以上的中文段落判行业，用来做语料打标、领域配比统计、数据集体检。</p>
+
+    <p><strong>不可以</strong>：判断二三十字的短句（见下面的长度曲线，30 字只有 44%，接近瞎猜）；判断一条文本是否属于多个领域并按真实比例分配（训练目标是「一个类别 + 5% 平滑」，不是真的软标签）；英文、代码以外的大段非中文文本。</p>
+
+    <h2>结构</h2>
+
+    <table class="kv">
+      <tr><th>形态</th><td>decoder-only Transformer，手写 PyTorch，不用 transformers 库</td></tr>
+      <tr><th>层数 / 宽度</th><td class="num">8 层 · d=512 · 8 头 · FFN 2048</td></tr>
+      <tr><th>位置编码</th><td>RoPE</td></tr>
+      <tr><th>上下文</th><td class="num">512 字（字符级，词表 15,341）</td></tr>
+      <tr><th>两个出口</th><td>语言模型头（猜下一个字）+ 领域头（31 维 softmax）</td></tr>
+      <tr><th>池化</th><td>取最后一个字的隐状态；前文看不到后文，取平均会混进只看过半句的状态</td></tr>
+      <tr><th>权重文件</th><td class="mono">best.pt · 382 MB · fp32 存档</td></tr>
+    </table>
+
+    <figure class="arch">
+      <button class="arch-open" type="button" aria-haspopup="dialog" aria-label="放大查看模型架构图">
+      <svg class="diagram" viewBox="0 0 760 772" role="img" aria-label="模型架构：字表嵌入加 RoPE 位置编码，8 层自注意力块，取最后一个字的隐状态后分成语言模型头与领域头两个出口">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ef-ink)"></path>
+          </marker>
+        </defs>
+
+        <!-- 输入 -->
+        <rect class="bx" x="200" y="14" width="360" height="48"></rect>
+        <text class="zh" x="380" y="36" text-anchor="middle">输入文本</text>
+        <text class="num" x="380" y="52" text-anchor="middle">≤ 512 字 · 字符级</text>
+        <line class="ln" x1="380" y1="62" x2="380" y2="88" marker-end="url(#ah)"></line>
+
+        <!-- 嵌入 -->
+        <rect class="bx" x="200" y="88" width="360" height="48"></rect>
+        <text class="zh" x="380" y="110" text-anchor="middle">字表嵌入</text>
+        <text class="num" x="380" y="126" text-anchor="middle">15,341 → 512 维</text>
+
+        <!-- 位置编码 -->
+        <rect class="bx soft" x="200" y="142" width="360" height="24"></rect>
+        <text class="num" x="380" y="158" text-anchor="middle">＋ RoPE 旋转位置编码</text>
+        <line class="ln" x1="380" y1="166" x2="380" y2="184" marker-end="url(#ah)"></line>
+
+        <!-- 8 层块 -->
+        <rect class="bx" x="150" y="184" width="460" height="246"></rect>
+        <text class="num" x="596" y="202" text-anchor="end">× 8 层</text>
+
+        <rect class="bx soft" x="180" y="210" width="400" height="44"></rect>
+        <text class="zh" x="380" y="229" text-anchor="middle">多头自注意力</text>
+        <text class="num" x="380" y="245" text-anchor="middle">8 头 · 因果掩码，每个字只看自己和左边</text>
+
+        <rect class="bx dash" x="180" y="262" width="400" height="22"></rect>
+        <text class="num" x="380" y="277" text-anchor="middle">残差 + LayerNorm</text>
+
+        <rect class="bx soft" x="180" y="292" width="400" height="44"></rect>
+        <text class="zh" x="380" y="311" text-anchor="middle">前馈网络</text>
+        <text class="num" x="380" y="327" text-anchor="middle">2048 · GELU</text>
+
+        <rect class="bx dash" x="180" y="344" width="400" height="22"></rect>
+        <text class="num" x="380" y="359" text-anchor="middle">残差 + LayerNorm</text>
+
+        <text class="num" x="380" y="396" text-anchor="middle">输出每个位置的隐状态，维度 512</text>
+        <line class="ln" x1="380" y1="430" x2="380" y2="460" marker-end="url(#ah)"></line>
+
+        <!-- 池化 -->
+        <rect class="bx soft" x="200" y="460" width="360" height="44"></rect>
+        <text class="zh" x="380" y="479" text-anchor="middle">取最后一个字的隐状态</text>
+        <text class="num" x="380" y="495" text-anchor="middle">这一个向量同时喂给两个出口</text>
+
+        <!-- 分叉 -->
+        <line class="ln" x1="380" y1="504" x2="380" y2="524"></line>
+        <line class="ln" x1="215" y1="524" x2="545" y2="524"></line>
+        <line class="ln" x1="215" y1="524" x2="215" y2="548" marker-end="url(#ah)"></line>
+        <line class="ln" x1="545" y1="524" x2="545" y2="548" marker-end="url(#ah)"></line>
+
+        <!-- 语言模型头（虚线 = 训练时才算） -->
+        <rect class="bx dash" x="80" y="548" width="270" height="76"></rect>
+        <text class="en" x="215" y="570" text-anchor="middle">LANGUAGE HEAD</text>
+        <text class="zh" x="215" y="590" text-anchor="middle">语言模型头</text>
+        <text class="num" x="215" y="608" text-anchor="middle">15,341 维 · 猜下一个字</text>
+        <line class="ln dash" x1="215" y1="624" x2="215" y2="648" marker-end="url(#ah)"></line>
+        <rect class="bx dash" x="80" y="648" width="270" height="44"></rect>
+        <text class="num" x="215" y="667" text-anchor="middle">训练时才算这一路</text>
+        <text class="num" x="215" y="683" text-anchor="middle">推理关闭</text>
+
+        <!-- 领域头（实线 = 实际取用的出口） -->
+        <rect class="bx" x="410" y="548" width="270" height="76"></rect>
+        <rect class="sq" x="424" y="562" width="7" height="7"></rect>
+        <text class="en" x="545" y="570" text-anchor="middle">DOMAIN HEAD</text>
+        <text class="zh" x="545" y="590" text-anchor="middle">领域头</text>
+        <text class="num" x="545" y="608" text-anchor="middle">线性映射 512 → 31</text>
+        <line class="ln" x1="545" y1="624" x2="545" y2="648" marker-end="url(#ah)"></line>
+
+        <rect class="bx" x="410" y="648" width="270" height="96"></rect>
+        <text class="zh" x="545" y="672" text-anchor="middle">31 维 softmax</text>
+        <text class="num" x="545" y="690" text-anchor="middle">各格概率，合计 1.000</text>
+        <text class="num" x="545" y="714" text-anchor="middle">30 类有样本 · 第 31 格空置</text>
+        <text class="num" x="545" y="732" text-anchor="middle">取最大值 → 领域判定</text>
+      </svg>
+      </button>
+      <figcaption>实线框是推理时真正跑的部分；虚线框是训练时才用到的那一路。两个出口共用同一个 512 维隐状态，没有各训各的。点图可以放大。</figcaption>
+    </figure>
+
+    <dialog class="arch-modal" id="archDialog" aria-label="模型架构图" tabindex="-1">
+      <div class="arch-bar">
+        <span class="ef-field">模型架构 · 8 层 · d=512 · 两个出口</span>
+        <span class="arch-tools">
+          <button class="ef-btn small" type="button" id="archFit">适应窗口</button>
+          <button class="ef-btn small" type="button" id="archClose">关闭</button>
+        </span>
+      </div>
+      <div class="arch-scroll" id="archScroll" tabindex="0" aria-label="放大的架构图，可滚动"></div>
+    </dialog>
+
+    <h2>训练数据</h2>
+
+    <p>语料来自智源 <strong>IndustryCorpus2</strong>（Apache-2.0），按行业分了子集，文件夹名本身就是标签——所以一条标注都不用手写。</p>
+
+    <table class="kv">
+      <tr><th>来源</th><td>BAAI/IndustryCorpus2，30 个行业子集（金融、法律、医学、体育、代码、航空航天……）</td></tr>
+      <tr><th>规模</th><td class="num">316,712 篇 · 356,481,811 字</td></tr>
+      <tr><th>切分</th><td class="num">训练 285,056 篇 / 验证 31,656 篇（按文档切，同一篇的块不会跨到另一侧）</td></tr>
+      <tr><th>类别</th><td>30 类有样本；第 31 个「其他」槽永远没有正样本，实际不会被选中</td></tr>
+    </table>
+
+    <h2>训练过程</h2>
+
+    <table class="kv">
+      <tr><th>损失</th><td>猜字交叉熵 + 2.0 × 领域交叉熵（标签平滑 0.95）+ 0.5 × 两块一致性 + 0.1 × 对比</td></tr>
+      <tr><th>优化器</th><td>AdamW，β=(0.9, 0.95)，weight decay 0.1，梯度裁剪 1.0</td></tr>
+      <tr><th>学习率</th><td>3e-4，余弦衰减，warmup 800 步</td></tr>
+      <tr><th>批与长度</th><td>batch 8 · 块长 512，训练中在 256~512 之间随机切换（长度增广）</td></tr>
+      <tr><th>训练量</th><td class="num">129,600 步（最佳快照 129,000 步）</td></tr>
+      <tr><th>硬件</th><td>单卡 RTX 2080 SUPER 8G，fp16，显存占用 2.99 GB，约 6 小时</td></tr>
+    </table>
+
+    <p class="ef-notice" data-flag="未跑完">计划 15 万步，在 12.96 万步手动停止。学习率已降到 1.4e-5，接近收尾，但不是严格跑满的退火。</p>
+
+    <h2>效果</h2>
+
+    <p>按输入长度看（同一批验证文档，只截前 N 字，每类 3 篇共 90 篇）：</p>
+
+    <table class="kv">
+      <tr><th>输入 30 字</th><td class="num">44.4%</td></tr>
+      <tr><th>输入 80 字</th><td class="num">51.1%</td></tr>
+      <tr><th>输入 150 字</th><td class="num">56.7%</td></tr>
+      <tr><th>输入 300 字</th><td class="num">72.2%</td></tr>
+      <tr><th>输入 512 字</th><td class="num">82.2%</td></tr>
+    </table>
+
+    <p>把每类取到 20 篇（共 600 篇）重测，类均衡召回 <strong>85.2%</strong>；按自然分布抽 2000 篇验证集是 <strong>88.45%</strong>。后者偏高是因为大类文档多，而大类恰好更好分。</p>
+
+    <p>按类看：航空航天、计算机编程_代码 100%；数学、消防安全、新闻传媒、信息安全 95%。最差的是计算机_通信 50%、其他制造 60%、科技_科学研究 60%、石油化工 60%、电力能源 65%——这五个的边界本身就重叠。</p>
+
+    <h2>已知限制</h2>
+
+    <ul>
+      <li><strong>不会说「不确定」。</strong>类目表有 31 格，但第 31 格「其他」一个训练样本都没有，模型学不会输出它。模糊文本只能从 30 个真类里硬选一个，而且常常很有信心——一篇写城市一天生活的散文被判成「住宿_餐饮_酒店」93%，因为文里有菜市场、面馆、奶茶、烤串。修法在数据侧：补 300~500 篇「什么都不专」的文本。</li>
+      <li><strong>短文本不可用。</strong>30 字时只有 44%，因为训练时永远见 512 字，短输入属于没见过的形态。把同样的字重复补齐到 512，命中能从 29.2% 提到 62.5%——说明瓶颈主要是长度，不是信息量。</li>
+      <li><strong>置信度会被补齐动作抬高。</strong>同一段话补齐后置信从 0.31 涨到 0.74，但它并没有更懂。当权重用时要注意这一点。</li>
+      <li><strong>全角标点压低置信度，但不影响命中率。</strong>训练语料的逗号句号全是半角，词表里只有一个中文标点「·」，没有「，」「。」。原样喂入时每个「，」都变成 <span class="mono">&lt;unk&gt;</span>。三组控制变量实验里命中率变化在噪声边缘，置信度却稳定低 0.03~0.06——代价是「模型变得没底」，不是「判错」。已由 <span class="mono">textproc.py</span> 归一化处理。</li>
+      <li><strong>输出不是真的软标签。</strong>目标分布是「真类 0.95 + 其余均摊」，模型学到的形状由平滑决定，不代表真实的领域共存比例。</li>
+      <li><strong>类目重叠。</strong>计算机_通信 / 计算机编程 / 人工智能 三者互相抢；时政 / 新闻传媒 难分；科技_科学研究 是个筐。这类错不是分类头不会分，是那几堆向量本来就没分开。</li>
+      <li><strong>没做温度校准</strong>，概率当权重用之前最好自己再校一遍。</li>
+      <li><strong>只训过中文</strong>，英文和其他语言没有兜底。</li>
+    </ul>
+
+    <p>机制层面的解释——两个出口、四项损失、梯度为什么等于「预测减目标」、分类头实测只把第二层从 std 0.020 练到 0.303、关键词假说——单独放在 <a href="how">原理</a> 页。</p>
+
+    <h2>怎么用</h2>
+
+    <p>仓库里 <span class="mono">start_infer.bat</span> 双击起页面，或者命令行：</p>
+
+    <p class="mono">python src/infer.py --checkpoint ./prism-v3-exp.pt --text "……"</p>
+
+    <p>批处理打标用 <span class="mono">tag.py</span>。按块喂的时候记住：块长 512 字，短于 200 字的段落并进相邻段再判。</p>
+
+    <h2>来源与许可</h2>
+
+    <ul>
+      <li>训练数据：BAAI/IndustryCorpus2，Apache-2.0</li>
+      <li>代码与权重：本机实验产物，未发布，未声明对外许可</li>
+      <li>界面字体：Saira，SIL Open Font License 1.1（许可证随字体存放）</li>
+      <li>界面规范：endfield-ui 套件，仅借结构与排版习惯，未使用任何游戏素材</li>
+    </ul>
+  </div>
+</main>
+
+<script>
+function setTheme(mode) {
+  document.documentElement.dataset.theme = mode;
+  localStorage.setItem('dl-theme', mode);
+}
+document.getElementById('theme').onclick = () => {
+  setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+};
+const saved = localStorage.getItem('dl-theme');
+if (saved) setTheme(saved);
+const themeParam = new URLSearchParams(location.search).get('theme');
+if (themeParam) setTheme(themeParam);
+
+// 架构图放大：把 SVG 复制一份进对话框，顺手把 marker 的 id 改掉，免得和页面上那份撞车
+const archDlg = document.getElementById('archDialog');
+const archScroll = document.getElementById('archScroll');
+const archOpen = document.querySelector('.arch-open');
+let archBuilt = false;
+
+function buildArch() {
+  if (archBuilt) return;
+  const svg = archOpen.querySelector('svg').cloneNode(true);
+  svg.querySelectorAll('[id]').forEach(el => { el.id = el.id + '-big'; });
+  svg.querySelectorAll('*').forEach(el => {
+    [...el.attributes].forEach(a => {
+      if (a.value.indexOf('url(#ah)') === 0) el.setAttribute(a.name, 'url(#ah-big)');
+    });
+  });
+  archScroll.appendChild(svg);
+  archBuilt = true;
+}
+
+archOpen.addEventListener('click', () => {
+  buildArch();
+  archScroll.classList.remove('is-fit');
+  document.getElementById('archFit').textContent = '适应窗口';
+  archDlg.showModal();
+  archDlg.focus();             // 焦点落在对话框本身，别让第一个按钮默认带上焦点框
+  archScroll.scrollTop = 0;
+});
+
+document.getElementById('archClose').onclick = () => archDlg.close();
+document.getElementById('archFit').onclick = (e) => {
+  archScroll.classList.toggle('is-fit');
+  e.currentTarget.textContent = archScroll.classList.contains('is-fit') ? '放大' : '适应窗口';
+};
+archDlg.addEventListener('click', (e) => {
+  if (e.target === archDlg) archDlg.close();   // 点遮罩关闭
+});
+
+// ?arch=1 直接把图打开，方便截图和分享
+if (new URLSearchParams(location.search).get('arch')) {
+  archOpen.click();
+}
+</script>
+</body>
+</html>

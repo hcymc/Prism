@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PRISM · 领域分布推理</title>
+<link rel="stylesheet" href="static/endfield.css">
+<link rel="stylesheet" href="static/lab.css">
+<link rel="stylesheet" href="static/mobile.css">
+<style>
+  main { max-width: 76rem; margin-inline: auto; padding: clamp(1.25rem, 3vw, 2.25rem) var(--ef-pad) 4rem; }
+  .ef-head { margin-bottom: 1.5rem; }
+  .readout-ledger { margin-top: 1.1rem; }
+  footer.foot { max-width: 76rem; margin: 0 auto; padding: 1.25rem var(--ef-pad) 3rem; border-top: 1px solid var(--ef-rule); }
+  textarea#t { min-height: 9.5rem; resize: vertical; line-height: 1.75; }
+  .hidden { display: none !important; }
+  .byline { margin: 0.35rem 0 0; font-size: 0.85rem; color: var(--ef-ink-2); }
+  .byline b { color: var(--ef-ink); font-weight: 700; letter-spacing: 0.02em; }
+</style>
+</head>
+<body class="ef ef-contours">
+<div class="ef-tri ef-in-sweep" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<header class="ef-cmdbar">
+  <a class="brand" href="./"><span class="seal">P</span>PRISM</a>
+  <nav aria-label="分区">
+    <a href="./" aria-current="page">推理<small>Inference</small></a>
+    <a href="card">模型卡<small>Model card</small></a>
+    <a href="how">原理<small>How it works</small></a>
+  </nav>
+  <div class="util"><button class="ef-btn small" type="button" id="theme">深浅</button></div>
+</header>
+
+<main>
+  <header class="ef-head">
+    <h1>PRISM <small>v3 · 棱镜</small></h1>
+    <p>贴一段中文，看它在 31 个领域格子里各占多少。从零训练的小语言模型，读字的同时顺手判领域。</p>
+    <p class="byline">作者 <b>hcy</b> · 3,335 万参数 · 单卡 RTX 2080 SUPER 训 6 小时 · 不依赖 transformers</p>
+  </header>
+
+  <div class="stack">
+    <section class="ef-panel">
+      <h2><span class="ef-pair"><span class="ef-eyebrow">Model</span><span>这个模型</span></span></h2>
+      <div class="ef-figs">
+        <div><b>3,335<span class="u">万</span></b><span>参数</span></div>
+        <div><b id="f-dom">31</b><span>领域槽位 · 30 类有样本</span></div>
+        <div><b id="f-step">—</b><span>训练步数</span></div>
+      </div>
+    </section>
+
+    <div class="two-up">
+      <section class="ef-panel cut-br">
+        <h2><span class="ef-pair"><span class="ef-eyebrow">Input</span><span>正文</span></span></h2>
+        <form class="ef-form" id="f" onsubmit="return false">
+          <label class="field">
+            <textarea id="t" placeholder="贴 300 字以上的段落最准。太短的句子它会把概率摊平。"></textarea>
+            <small>模型一次只吃 512 字；不足 512 字的会自动重复补齐——训练时它只见过这个长度。</small>
+          </label>
+
+          <div class="chips" id="chips"></div>
+
+          <p class="ef-actions">
+            <button class="ef-btn go" id="go" type="submit">推理 <span class="sub">Ctrl+Enter</span></button>
+            <!-- 默认不显示：只有服务端声明支持续写时才放出来（ONNX 版没有语言头，见 /api/state） -->
+            <label class="inline-check" id="genwrap" style="display:none"><input type="checkbox" id="g"> 顺便续写 40 字</label>
+          </p>
+          <p class="ef-notice" id="err" data-flag="出错" hidden></p>
+        </form>
+      </section>
+
+      <section class="ef-panel tab-right">
+        <h2><span class="ef-pair"><span class="ef-eyebrow">Verdict</span><span>判定</span></span></h2>
+        <p class="verdict is-idle" id="verdict"><b id="big">—</b><span id="bigsub">等待输入</span></p>
+        <p class="verdict-name muted" id="topname">贴一段文字，按 Ctrl+Enter 推理</p>
+        <ul class="ef-ledger readout-ledger">
+          <li><span>输入字数</span><span class="ef-field" id="m-chars">—</span></li>
+          <li><span>单次耗时</span><span class="ef-field" id="m-ms">—</span></li>
+          <li><span>分布熵</span><span class="ef-field" id="m-ent">—</span></li>
+          <li><span>前三位合计</span><span class="ef-field" id="m-sum">—</span></li>
+        </ul>
+      </section>
+    </div>
+
+    <section class="ef-panel" id="distbox" hidden>
+      <h2><span class="ef-pair"><span class="ef-eyebrow">Distribution</span><span>全部领域</span></span>
+        <span class="ef-field" id="dist-sum">合计 0.000</span></h2>
+      <ol class="dist" id="dist"></ol>
+    </section>
+
+    <section class="ef-panel" id="contbox" hidden>
+      <h2><span class="ef-pair"><span class="ef-eyebrow">Continuation</span><span>续写</span></span></h2>
+      <p class="cont-out" id="cont"></p>
+    </section>
+  </div>
+</main>
+
+<footer class="foot">
+  <ul class="ef-facts ef-field" id="facts">
+    <li>模型步数 —</li>
+    <li>领域 31 槽</li>
+    <li>上下文 512 字</li>
+  </ul>
+</footer>
+
+<script>
+const EXAMPLES = [
+  '央行意外下调中期借贷便利利率，A股三大指数早盘集体高开，银行、券商板块领涨，两市成交额较前一交易日明显放大。多家机构认为，本轮宽松信号偏积极，但实体融资需求的修复仍需观察后续信贷数据。',
+  '下半场补时第九十三分钟，替补登场的前锋在禁区外一脚远射直挂死角，帮助主队二比一完成逆转。全场技术统计显示主队控球率不足四成，射正次数却高达七次，效率成为取胜关键。',
+  '用 Python 写一个装饰器，同时给函数加上缓存和超时控制。注意超时要真的打断执行，不能只在外面套一层 wait_for，否则协程内部的资源不会释放，正确做法是把信号量、超时和异常处理都放进装饰器里统一管理。',
+  '患者术后第三天出现低热，复查血常规提示白细胞计数偏高，中性粒细胞比例上升，切口局部红肿伴压痛，考虑浅表切口感染。已拆除部分缝线充分引流，留取分泌物培养，经验性使用第二代头孢菌素静脉滴注。',
+  '被告未按合同约定交付货物，一审判令其支付违约金及利息。法院认为，双方签订的买卖合同合法有效，被告逾期履行已构成违约，原告主张的违约金标准未过分高于实际损失，予以支持。'
+];
+
+const CHIP_LABEL = ['金融', '体育', '代码', '医学', '法律'];
+
+const t = document.getElementById('t');
+const big = document.getElementById('big');
+const bigsub = document.getElementById('bigsub');
+const topname = document.getElementById('topname');
+const chips = document.getElementById('chips');
+const errEl = document.getElementById('err');
+
+EXAMPLES.forEach((ex, i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'ef-chip';
+  b.innerHTML = '<span class="ef-eyebrow">' + CHIP_LABEL[i] + '</span> ' + ex.slice(0, 14) + '…';
+  b.title = ex;
+  b.onclick = () => { t.value = ex; t.focus(); };
+  chips.appendChild(b);
+});
+
+function setTheme(mode) {
+  document.documentElement.dataset.theme = mode;
+  localStorage.setItem('dl-theme', mode);
+}
+document.getElementById('theme').onclick = () => {
+  setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+};
+const saved = localStorage.getItem('dl-theme');
+if (saved) setTheme(saved);
+const themeParam = new URLSearchParams(location.search).get('theme');
+if (themeParam) setTheme(themeParam);
+
+function showErr(msg) {
+  errEl.hidden = !msg;
+  errEl.textContent = msg || '';
+}
+
+async function run() {
+  const btn = document.getElementById('go');
+  const text = t.value.trim();
+  showErr('');
+  if (!text) { showErr('先贴一段文字。'); t.focus(); return; }
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  try {
+    const r = await fetch('api/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, generate: document.getElementById('g').checked ? 40 : 0 })
+    });
+    const d = await r.json();
+    if (d.error) { showErr(d.error); return; }
+    render(d);
+  } catch (e) {
+    showErr('请求失败：' + e);
+  } finally {
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+  }
+}
+
+function render(d) {
+  const p = d.dist[0].p;
+  document.getElementById('verdict').classList.remove('is-idle');
+  big.textContent = (p * 100).toFixed(1) + '%';
+  bigsub.textContent = '排第一的占比';
+  topname.textContent = d.dist[0].name;
+  topname.classList.remove('muted');
+
+  document.getElementById('m-chars').textContent = d.n_chars + ' 字';
+  document.getElementById('m-ms').textContent = d.ms + ' ms';
+  const n = d.dist.length;
+  document.getElementById('m-ent').textContent =
+    d.entropy.toFixed(3) + ' / ' + Math.log(n).toFixed(3);
+  const sum3 = d.dist.slice(0, 3).reduce((a, x) => a + x.p, 0);
+  document.getElementById('m-sum').textContent = (sum3 * 100).toFixed(1) + '%';
+
+  const box = document.getElementById('distbox');
+  box.hidden = false;
+  const ol = document.getElementById('dist');
+  ol.innerHTML = '';
+  d.dist.forEach((x, i) => {
+    const li = document.createElement('li');
+    if (i === 0) li.className = 'is-top';
+    li.innerHTML =
+      '<span class="rk">' + String(i + 1).padStart(2, '0') + '</span>' +
+      '<span class="nm">' + x.name + '</span>' +
+      '<span class="tk"><i></i></span>' +
+      '<span class="pc">' + (x.p * 100).toFixed(1) + '%</span>';
+    ol.appendChild(li);
+  });
+  requestAnimationFrame(() => {
+    [...ol.children].forEach((li, i) => {
+      li.querySelector('i').style.width = (d.dist[i].p * 100).toFixed(2) + '%';
+    });
+  });
+  document.getElementById('dist-sum').textContent = '合计 ' + d.dist.reduce((a, x) => a + x.p, 0).toFixed(3);
+
+  const cb = document.getElementById('contbox');
+  if (d.continuation) {
+    cb.hidden = false;
+    document.getElementById('cont').textContent = d.continuation;
+  } else {
+    cb.hidden = true;
+  }
+  document.getElementById('facts').innerHTML =
+    '<li>模型步数 ' + d.model.step.toLocaleString() + '</li>' +
+    '<li>领域 ' + d.model.domains + ' 槽</li>' +
+    '<li>上下文 512 字</li>' +
+    '<li>常驻 ' + d.model.device + '</li>';
+}
+
+document.getElementById('f').addEventListener('submit', run);
+t.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) run(); });
+
+fetch('api/state').then(r => r.json()).then(d => {
+  document.getElementById('facts').innerHTML =
+    '<li>模型步数 ' + d.model.step.toLocaleString() + '</li>' +
+    '<li>领域 ' + d.model.domains + ' 槽</li>' +
+    '<li>上下文 ' + d.model.max_len + ' 字</li>' +
+    '<li>常驻 ' + d.model.device + '</li>';
+  document.getElementById('f-dom').textContent = d.model.domains;
+  document.getElementById('f-step').textContent = d.model.step.toLocaleString();
+  // 续写只在带语言头的部署上才有；ONNX 版只导了领域出口，这里就不露出来
+  if (d.model.continuation === true) {
+    var w = document.getElementById('genwrap');
+    if (w) w.style.display = '';
+  }
+}).catch(() => {});
+
+const q = new URLSearchParams(location.search).get('q');
+if (q) { t.value = q; run(); }
+</script>
+</body>
+</html>

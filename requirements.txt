@@ -1,0 +1,14 @@
+# 训练与推理只需要这两个。模型是纯 PyTorch 手写的，刻意不依赖 transformers / datasets。
+torch>=2.0
+numpy>=1.24
+
+# 下面两组按需装，不是跑模型的前提。
+#
+# 导出 ONNX、在没装 torch 的机器上推理（2 核 2G 也能跑）：
+#   pip install onnxruntime onnx
+#   - Python 3.8 只能装 onnxruntime<=1.17.3；3.9+ 可以用新版
+#   - Windows 上还需要 VC++ 2015-2022 运行库，否则 import 时报
+#     "DLL load failed"，装 vc_redist.x64.exe 即可
+#
+# 抓数据集（dataset/ 下的脚本）另外需要：
+#   pip install requests pyarrow

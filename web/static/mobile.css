@@ -1,0 +1,122 @@
+/* ==========================================================================
+   PRISM 手机端适配
+   只在 ≤700px 生效，桌面端一个字节都不受影响。
+
+   三件事：
+   1) 长字符串（路径、参数名、URL）允许在任意位置断行，否则会把面板撑开
+   2) 键值表在窄屏改成上下两行，不再硬挤左右两列
+   3) 分布条那四列固定宽度整体收窄
+
+   模板里的 <style> 也定义了 main / .kv / figure.arch，所以这几处用 body 前缀
+   抬高一级特异性，免得被模板样式盖回去（模板的 style 在 link 之后）。
+   ========================================================================== */
+
+@media (max-width: 700px) {
+  /* 1. 断行 —— 溢出最常见的原因 */
+  body { overflow-wrap: anywhere; }
+
+  body :is(p, li, td, th, code, .mono, .cont-out, .ef-marker) {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* 页面容器：上下留白收一点，左右靠 --ef-pad 自己缩 */
+  body main {
+    padding-top: 1rem;
+    padding-bottom: 2.5rem;
+  }
+
+  /* 2. 顶栏：印章缩一号，导航项收紧 */
+  .ef-cmdbar { gap: 0 0.6rem; }
+  .ef-cmdbar .brand { font-size: 0.92rem; gap: 0.5rem; padding-block: 0.45rem; }
+  .ef-cmdbar .seal { width: 1.85rem; height: 1.85rem; font-size: 1.05rem; }
+  .ef-cmdbar nav a {
+    min-height: 2.7rem;
+    padding: 0.25rem 0.55rem;
+    font-size: 0.9rem;
+  }
+  .ef-cmdbar nav a small { font-size: 0.6rem; letter-spacing: 0.06em; }
+
+  /* 标题区 */
+  .ef-sheet-head { padding-bottom: 1rem; }
+  .ef-facts { font-size: 0.82rem; }
+
+  /* 面板内边距 */
+  .ef-panel { padding: 0.85rem 0.9rem 1rem; }
+
+  /* 三格数字：字号缩，别把「3,335万」挤成两行 */
+  .ef-figs { gap: 0.4rem; }
+  .ef-figs b { font-size: 1.15rem; }
+  .ef-figs span { font-size: 0.72rem; }
+
+  /* 判定读数 */
+  .verdict b { font-size: clamp(2.6rem, 13vw, 3.6rem); }
+  .verdict-name { font-size: 1.1rem; }
+
+  /* 3. 分布条：四列固定宽度加起来接近整屏宽，窄屏必须收 */
+  .dist li {
+    grid-template-columns: 1.5rem minmax(0, 6.5rem) minmax(0, 1fr) 3rem;
+    gap: 0.4rem;
+    padding: 0.34rem 0;
+  }
+  .dist .rk { font-size: 0.68rem; }
+  .dist .nm { font-size: 0.8rem; }
+  .dist .pc { font-size: 0.72rem; }
+
+  /* 触屏上按钮给足点击高度 */
+  .ef-btn { min-height: 2.6rem; }
+  textarea#t { min-height: 7.5rem; }
+
+  /* 代码块横滑，别把面板顶宽 */
+  body pre.code,
+  body .flow {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  body pre.code { font-size: 0.76rem; padding: 0.7rem 0.8rem; }
+
+  /* 架构图：撤掉大屏那圈外扩，边距收紧 */
+  body figure.arch {
+    width: 100%;
+    margin: 1rem 0 0;
+    padding: 0.6rem;
+  }
+
+  /* 4. 键值表：窄屏改成「项名一行、内容一行」 */
+  body :is(.kv, .kv tbody, .kv tr, .kv th, .kv td) {
+    display: block;
+    width: auto;
+  }
+  body .kv tr {
+    border: 0;
+    padding: 0;
+  }
+  body .kv th {
+    width: auto;
+    padding: 0.55rem 0 0.1rem;
+    border-bottom: 0;
+    font-size: 0.8rem;
+  }
+  body .kv td {
+    padding: 0 0 0.6rem;
+    border-bottom: 1px solid var(--ef-rule);
+    font-size: 0.88rem;
+  }
+  body .kv td.num { font-size: 0.86rem; }
+}
+
+/* 更窄的机器（iPhone SE 一类，360px 上下）再收一档 */
+@media (max-width: 420px) {
+  .ef-cmdbar .brand { font-size: 0.85rem; }
+  .ef-cmdbar nav a { min-height: 2.2rem; padding: 0.2rem 0.45rem; font-size: 0.85rem; }
+  .ef-cmdbar nav a small { display: none; }
+
+  .ef-figs b { font-size: 1rem; }
+  .ef-figs span { font-size: 0.68rem; }
+
+  .dist li {
+    grid-template-columns: 1.3rem minmax(0, 5rem) minmax(0, 1fr) 2.8rem;
+    gap: 0.3rem;
+  }
+  .dist .nm { font-size: 0.75rem; }
+}

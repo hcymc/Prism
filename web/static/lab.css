@@ -1,0 +1,230 @@
+/* ==========================================================================
+   DOMAIN·LAB 的变体与本地部件
+   变体卡：accent ice #7DE6FF / paper cool(dark) / cut standard
+           ground contours / density standard / motion full
+   套件本体在 endfield.css，这里只做三件事：装字体、换强调色、加两个本产品
+   自己的部件（判定大数字、分布条）。正文一律直角，只有能按的东西切角。
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Saira Variable';
+  src: url('fonts/Saira.ttf') format('truetype');
+  font-weight: 100 900;
+  font-stretch: 50% 125%;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ef-signal: #7de6ff;
+  --ef-tri-b: #7de6ff;
+  --ef-font-ui: 'Saira Variable', 'Saira', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+  --ef-font-text: 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif;
+}
+
+/* 深色那套的冷版纸色，和上面选定的变体卡一致 */
+:root[data-theme='dark'] {
+  --ef-paper: #171a1c;
+  --ef-panel: #1f2326;
+  --ef-rule: #323a3f;
+  --ef-chip: #2a3034;
+}
+
+/* ---------- 判定读数：一个非常大的数字 ---------- */
+
+.verdict {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.2rem 0 0.1rem;
+}
+
+.verdict b {
+  font-family: var(--ef-font-ui);
+  font-stretch: var(--ef-wider);
+  font-weight: 800;
+  font-size: clamp(3.4rem, 8vw, 5.6rem);
+  line-height: 0.86;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.verdict span {
+  font-family: var(--ef-font-ui);
+  font-stretch: var(--ef-wide);
+  font-size: 0.9rem;
+  color: var(--ef-ink-2);
+}
+
+/* 还没推理时不要把破折号放到 5rem，缩回去，等结果出来再放大 */
+.verdict.is-idle b {
+  font-size: 2.6rem;
+  color: var(--ef-ink-2);
+  letter-spacing: 0.1em;
+}
+
+.verdict.is-idle span {
+  font-size: 0.85rem;
+}
+
+.ef-figs b .u {
+  font-size: 0.45em;
+  font-weight: 700;
+  margin-left: 0.12em;
+  color: var(--ef-ink-2);
+}
+
+.verdict-name {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0.15rem 0 0;
+  letter-spacing: 0.01em;
+}
+
+/* ---------- 分布条：一行一个领域，细线分隔 ---------- */
+
+.dist {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  border-top: 1px solid var(--ef-rule);
+}
+
+.dist li {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 9.5rem) minmax(0, 1fr) 3.6rem;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.38rem 0;
+  border-bottom: 1px solid var(--ef-rule);
+}
+
+.dist .rk {
+  font-family: var(--ef-font-ui);
+  font-stretch: var(--ef-wide);
+  font-weight: 600;
+  font-size: 0.72rem;
+  color: var(--ef-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.dist .nm {
+  font-size: 0.88rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ef-ink-2);
+}
+
+.dist .tk {
+  height: 0.55rem;
+  background: var(--ef-chip);
+}
+
+.dist .tk i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: color-mix(in srgb, var(--ef-ink) 42%, transparent);
+  transition: width 280ms cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+.dist .pc {
+  font-family: var(--ef-font-ui);
+  font-stretch: var(--ef-wide);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ef-ink-2);
+}
+
+/* 排在第一的那个是这次要看的，用强调色填；其余保持墨阶 */
+.dist li.is-top .nm,
+.dist li.is-top .pc,
+.dist li.is-top .rk {
+  color: var(--ef-ink);
+}
+
+.dist li.is-top .nm {
+  font-weight: 700;
+}
+
+.dist li.is-top .tk i {
+  /* trace 而不是 signal：浅色主题里 signal 当条几乎看不见，trace 在浅色是墨、深色才是强调色 */
+  background: var(--ef-trace);
+}
+
+/* ---------- 例句小块 ---------- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.1rem 0 0.2rem;
+}
+
+.chips .ef-chip {
+  border: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  max-width: 100%;
+  text-align: left;
+  line-height: 1.35;
+}
+
+/* ---------- 面板之间留白 ---------- */
+
+.stack > * + * {
+  margin-top: 1.25rem;
+}
+
+.two-up {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .two-up {
+    grid-template-columns: 1fr;
+  }
+}
+
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--ef-ink-2);
+}
+
+.inline-check input {
+  accent-color: var(--ef-signal);
+  width: 1rem;
+  height: 1rem;
+}
+
+.cont-out {
+  font-size: 1rem;
+  line-height: 1.9;
+  color: var(--ef-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-left: 3px solid var(--ef-ink);
+  padding-left: 0.9rem;
+  margin: 0.5rem 0 0;
+}
+
+.muted {
+  color: var(--ef-ink-2);
+}
+
+.mono {
+  font-family: var(--ef-font-mono);
+  font-size: 0.8rem;
+}
