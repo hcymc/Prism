@@ -1,4 +1,9 @@
-# Prism-v3-exp
+<p align="center">
+<img alt="Prism logo" src="assets/logo/prism-logo.svg" width="160" height="160">
+<h1 align="center">Prism-v3-exp</h1>
+</p>
+
+
 
 <p>
 <img alt="version" src="https://img.shields.io/badge/version-v3-blue">
@@ -8,11 +13,12 @@
 <img alt="license" src="https://img.shields.io/badge/license-MIT%20%2F%20Apache--2.0-lightgrey">
 </p>
 
-
 **一个从零训练的中文小语言模型：一边猜下一个字，一边把整段文字拆成 31 个行业的概率光谱。**
 
 一束白光穿过棱镜散成光谱，一段文字穿过 8 层散成 31 路概率。
 本发布只包含一个模型：`prism-v3-exp`（129,600 步 / 30 类 / 33.35M 参数的最终权重）
+
+**权重下载**：[HuggingFace](https://huggingface.co/hcy-ai/prism-v3-exp) · [ModelScope](https://www.modelscope.cn/models/hcymcweb/Prism-v3-exp)
 
 ---
 
@@ -129,6 +135,7 @@ python tools/dashboard.py --run-dir data/runs/v3_30class --port 8901
 | `web/`                    | 三个页面的模板与样式（endfield 风格，含手机端适配）            |
 | `docs/`                   | 模型卡、内部机制、评测、数据集、笔记                           |
 | `scripts/`                | 启动脚本；`legacy/` 是两个已废弃的调度器                     |
+| `assets/logo/`            | Logo（SVG 源 + 16–1024 px PNG + favicon），由 `tools/make_logo.py` 生成 |
 
 所有路径经 `src/paths.py` 解析，代码里没有绝对路径。数据与产物默认在仓库内 `data/`（已忽略），
 要放别处就设 `PRISM_HOME`。
@@ -195,4 +202,14 @@ python src/infer.py --checkpoint data/runs/smoke/ckpt_final.pt --text "原告与
 - 界面规范取自 endfield-ui 套件，仅借结构与排版习惯，未使用任何游戏素材
 
 本模型与 IndustryCorpus2 的发布方无隶属关系。
+
+---
+
+## 相关链接
+
+| | |
+| --- | --- |
+| GitHub（代码 / 训练脚本 / 网页 / 文档） | https://github.com/hcymc/Prism |
+| HuggingFace（权重） | https://huggingface.co/hcy-ai/prism-v3-exp |
+| ModelScope（权重） | https://www.modelscope.cn/models/hcymcweb/Prism-v3-exp |
 
